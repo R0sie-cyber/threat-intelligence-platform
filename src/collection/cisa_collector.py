@@ -1,123 +1,109 @@
 """
-Module: cisa_collector.py
+cisa_collector.py
 
-Project: Project Atlas (Working Codename)
-
-Purpose:
-Download the latest Known Exploited Vulnerabilities (KEV) catalog
-published by the Cybersecurity and Infrastructure Security Agency (CISA)
-and store the raw response locally.
-
-This module represents the Collection Layer of the Threat Intelligence
-Platform. The collected data will later move through validation,
-normalization, enrichment, risk scoring, storage, and visualization.
+Collects the latest Known Exploited Vulnerabilities (KEV)
+from the Cybersecurity and Infrastructure Security Agency (CISA)
+and stores the raw threat intelligence locally.
 
 Author: Roselyn Ojo
-Version: 1.0
+Project: SignalIQ
+Codename: Project Atlas
 """
 
 import json
 from pathlib import Path
+from datetime import datetime
 
 import requests
 
 
-# ==========================================================
+# ============================================================
 # Configuration
-# ==========================================================
+# ============================================================
 
 CISA_KEV_URL = (
-    "https://www.cisa.gov/sites/default/files/feeds/"
-    "known_exploited_vulnerabilities.json"
+    "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 )
 
-OUTPUT_FILE = Path("sample_data/cisa_raw.json")
+OUTPUT_DIRECTORY = Path("sample_data")
+OUTPUT_FILE = OUTPUT_DIRECTORY / "cisa_raw.json"
 
 
-# ==========================================================
-# Future Improvements
-# ==========================================================
-
-# TODO:
-# - Validate downloaded data before saving
-# - Normalize field names across threat feeds
-# - Record collection timestamps
-# - Implement structured logging
-# - Handle retry logic for temporary network failures
-# - Integrate into the automated collection pipeline
-
-
-# ==========================================================
-# Collection Functions
-# ==========================================================
+# ============================================================
+# Functions
+# ============================================================
 
 def fetch_cisa_kev():
     """
-    Retrieve the latest Known Exploited Vulnerabilities (KEV)
-    catalog from CISA.
-
-    Returns:
-        dict: Parsed JSON response from the CISA KEV feed.
+    Download the latest CISA Known Exploited Vulnerabilities feed.
     """
 
-    print("Connecting to CISA KEV...")
+    print("\n======================================")
+    print(" SignalIQ Threat Collection")
+    print("======================================\n")
+
+    print("Connecting to CISA KEV feed...")
 
     response = requests.get(CISA_KEV_URL, timeout=30)
 
-    # Raise an exception if the request fails
     response.raise_for_status()
+
+    print("Connection successful.\n")
 
     return response.json()
 
 
 def save_raw_data(data):
     """
-    Save the raw CISA response locally.
-
-    Args:
-        data (dict):
-            Parsed JSON returned by the CISA API.
+    Save the raw JSON response locally.
     """
 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=4)
 
-    print(f"Raw data saved to: {OUTPUT_FILE}")
+    print(f"Raw threat intelligence saved to:")
+    print(f"   {OUTPUT_FILE}\n")
 
 
-# ==========================================================
-# Main Pipeline
-# ==========================================================
-
-def main():
+def display_summary(data):
     """
-    Execute the initial threat collection workflow.
-
-    Workflow:
-        1. Connect to CISA
-        2. Download the KEV catalog
-        3. Count vulnerabilities
-        4. Save raw data locally
+    Display a summary of the downloaded threat feed.
     """
-
-    data = fetch_cisa_kev()
 
     vulnerabilities = data.get("vulnerabilities", [])
 
-    print(f"Downloaded {len(vulnerabilities)} vulnerabilities.")
-
-    print("Saving raw data...")
-
-    save_raw_data(data)
-
-    print("Collection complete.")
+    print("Collection Summary")
+    print("------------------")
+    print(f"Collection Time : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Threat Feed     : CISA Known Exploited Vulnerabilities")
+    print(f"Vulnerabilities : {len(vulnerabilities)}\n")
 
 
-# ==========================================================
-# Entry Point
-# ==========================================================
+# ============================================================
+# Main
+# ============================================================
+
+def main():
+
+    try:
+
+        data = fetch_cisa_kev()
+
+        display_summary(data)
+
+        print("Saving raw threat intelligence...\n")
+
+        save_raw_data(data)
+
+        print("Collection completed successfully.\n")
+
+    except requests.exceptions.RequestException as error:
+
+        print("Collection failed.")
+        print(error)
+
 
 if __name__ == "__main__":
     main()
