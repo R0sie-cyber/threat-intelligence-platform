@@ -6,8 +6,8 @@ from the Cybersecurity and Infrastructure Security Agency (CISA)
 and stores the raw threat intelligence locally.
 
 Author: Roselyn Ojo
-Project: SignalIQ
-Codename: Project Atlas
+Project: Threat Intelligence Platform
+Development Codename: SignalIQ
 """
 
 import json
