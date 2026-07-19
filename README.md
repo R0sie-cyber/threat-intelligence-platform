@@ -18,21 +18,21 @@ This project demonstrates software engineering, cybersecurity, and threat intell
 
 ## Why I Built This
 
-Threat intelligence is only valuable if defenders can understand and act on it quickly.
+While working through threat hunting labs and vulnerability research, I realized analysts often have to switch between multiple intelligence sources to investigate a single vulnerability.
 
-As the volume of cyber threat intelligence continues to grow, analysts spend increasing amounts of time gathering and organizing information instead of investigating threats.
+I'm building this project to better understand how modern threat intelligence platforms are designed and to explore how threat collection, enrichment, and prioritization can be automated using Python, public threat feeds, cloud technologies, and data visualization.
 
-This platform explores how automation can transform fragmented intelligence into contextual, prioritized, and actionable insights that accelerate security investigations.
+Rather than replacing analysts, the goal is to reduce repetitive data gathering so more time can be spent investigating and understanding threats.
 
 ---
 
 ## Current Features
 
-- Live threat collection from the CISA Known Exploited Vulnerabilities (KEV) REST API
-- Automatic API response validation
-- Local storage of collected threat intelligence
+- Collects live threat intelligence from the CISA Known Exploited Vulnerabilities (KEV) feed
+- Validates API responses before processing
+- Stores raw threat intelligence for future enrichment
 - Modular service-oriented architecture
-- System architecture documentation
+- Architecture and system design documentation
 - Database schema design
 
 ---
@@ -86,23 +86,19 @@ docs/architecture/system-architecture.md
 ## Tech Stack
 
 ### Languages
-
 - Python
 
 ### Threat Intelligence
-
 - CISA Known Exploited Vulnerabilities (KEV)
 - REST APIs
 
 ### Cybersecurity Concepts
-
 - Threat Intelligence
 - MITRE ATT&CK
 - Vulnerability Management
 
 ### Planned Technologies
-
-- Azure
+- Microsoft Azure
 - Power BI
 - SQL Database
 
@@ -170,7 +166,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the threat collector
+Collect the latest CISA Known Exploited Vulnerabilities (KEV) feed.
 
 ```bash
 python src/collection/cisa_collector.py
