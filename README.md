@@ -8,11 +8,12 @@ An end-to-end threat intelligence platform that automates the collection, enrich
 
 ## Overview
 
-Modern security analysts rely on dozens of disconnected intelligence sources to investigate a single threat. Valuable context is scattered across vulnerability databases, threat feeds, vendor advisories, MITRE ATT&CK documentation, and security blogs, forcing analysts to manually collect and correlate information before meaningful investigation can begin.
+Modern security analysts rely on multiple intelligence sources to investigate a single threat. Valuable context is often scattered across vulnerability databases, threat feeds, vendor advisories, the MITRE ATT&CK framework, and other security resources, requiring analysts to manually collect and correlate information before meaningful investigation can begin.
 
-The Threat Intelligence Platform is being developed to reduce analyst cognitive overload by automatically collecting, enriching, prioritizing, and organizing cyber threat intelligence into a centralized workflow.
+SignalIQ is being developed to reduce that manual effort by automatically collecting, enriching, prioritizing, and organizing cyber threat intelligence into a centralized workflow.
 
-This project demonstrates software engineering, cybersecurity, and threat intelligence concepts while following a modular architecture designed for future cloud deployment.
+This project demonstrates cybersecurity, software engineering, cloud, and data engineering concepts while following a modular architecture designed for future cloud deployment.
+
 
 ---
 
