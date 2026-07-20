@@ -10,11 +10,11 @@ The Threat Intelligence Platform collects intelligence from multiple public sour
 
 ## Purpose
 
-Provides vulnerabilities confirmed to be actively exploited in the wild.
+Provides a curated catalog of vulnerabilities confirmed to be actively exploited in the wild.
 
 ## Why It Matters
 
-This feed helps prioritize vulnerabilities that represent immediate risk instead of theoretical vulnerabilities.
+Unlike general vulnerability databases, the KEV catalog focuses on vulnerabilities that represent immediate operational risk, making it valuable for prioritizing remediation efforts.
 
 ## Data Format
 
@@ -48,11 +48,11 @@ https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 
 ## Purpose
 
-Provides detailed vulnerability information for publicly disclosed CVEs.
+Provides standardized vulnerability information for publicly disclosed CVEs.
 
 ## Why It Matters
 
-Adds technical vulnerability metadata including CVSS scores.
+NVD enriches vulnerabilities with severity scores, technical metadata, and references that help analysts understand the potential impact of a vulnerability.
 
 ## Data Format
 
@@ -77,11 +77,11 @@ API Key (recommended)
 
 ## Purpose
 
-Provides community-generated threat intelligence and Indicators of Compromise.
+Provides community-generated threat intelligence, indicators of compromise (IOCs), and threat research shared by security professionals.
 
 ## Why It Matters
 
-Adds real-world indicators collected from security researchers.
+Threat feeds like OTX complement vulnerability databases by providing real-world intelligence observed and shared by the security community.
 
 ## Data Format
 
@@ -105,11 +105,11 @@ API Key
 
 ## Purpose
 
-Provides reputation information for malicious IP addresses.
+Provides reputation data for public IP addresses based on reported malicious activity.
 
 ## Why It Matters
 
-Adds IP reputation and abuse confidence scoring.
+IP reputation helps analysts quickly determine whether an address has a history of malicious behavior during an investigation.
 
 ## Data Format
 
