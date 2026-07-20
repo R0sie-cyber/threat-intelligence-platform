@@ -1,8 +1,7 @@
 # Version History
 
----
 
-# Version 1.0 — Building the Foundation
+## Version 1.0 — Building the Foundation
 
 ### Goal
 
@@ -13,12 +12,11 @@ Create the core platform that collects, stores, and visualizes threat intelligen
 - Threat feed collection
 - IOC normalization
 - SQLite database
-- Initial dashboard
+- Initial Power BI dashboard
 - Manual threat reports
 
----
 
-# Version 2.0 — Making Threat Data Smarter
+## Version 2.0 — Making Threat Data Smarter
 
 ### Goal
 
@@ -29,16 +27,15 @@ Enrich raw threat intelligence with context that helps analysts prioritize what 
 - MITRE ATT&CK mapping
 - CVE enrichment
 - EPSS scoring
-- IOC prioritization
+- Risk-based IOC prioritization
 - Threat actor attribution
 
----
 
-# Version 3.0 — Assisting the Analyst
+## Version 3.0 — Assisting the Analyst
 
 ### Goal
 
-Use AI to speed up investigations without replacing analyst decision-making.
+Use AI to support investigations while keeping analysts in control of security decisions.
 
 ### Features
 
@@ -47,9 +44,9 @@ Use AI to speed up investigations without replacing analyst decision-making.
 - Investigation recommendations
 - Natural language search
 
----
 
-# Version 4.0 — Moving to the Cloud
+
+## Version 4.0 — Moving to the Cloud
 
 ### Goal
 
@@ -63,9 +60,9 @@ Deploy the platform to Azure and make it accessible through cloud-native service
 - CI/CD pipeline
 - Docker containers
 
----
 
-# Version 5.0 — Production Ready
+
+## Version 5.0 — Production Ready
 
 ### Goal
 
@@ -76,5 +73,5 @@ Transform the platform into a scalable security engineering tool.
 - Multiple threat intelligence sources
 - Scheduled automation
 - Real-time threat updates
-- User accounts
 - Performance optimization
+- Production-ready deployment
