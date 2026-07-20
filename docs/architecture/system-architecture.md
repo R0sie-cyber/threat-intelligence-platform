@@ -1,12 +1,12 @@
 # System Architecture
 
-## Purpose
+## Overview
 
-Modern security analysts rarely struggle because they lack threat intelligence. They struggle because threat intelligence is fragmented across dozens of disconnected platforms, each presenting information differently.
+Modern security analysts rarely struggle because they lack threat intelligence. They struggle because threat intelligence is fragmented across multiple disconnected intelligence sources, each presenting information differently.
 
-Investigating a single threat often requires switching between vulnerability databases, threat intelligence feeds, vendor advisories, MITRE ATT&CK documentation, security blogs, and internal telemetry before meaningful analysis can even begin.
+Investigating a single threat often requires switching between vulnerability databases, threat intelligence feeds, vendor advisories, the MITRE ATT&CK framework, security blogs, and internal telemetry before meaningful analysis can even begin.
 
-The Threat Intelligence Platform is designed to reduce analyst cognitive overload by automatically collecting, enriching, organizing, and prioritizing cyber threat intelligence into a centralized workspace.
+The Threat Intelligence Platform is being designed to reduce analyst cognitive overload by automatically collecting, enriching, organizing, and prioritizing cyber threat intelligence into a centralized workspace.
 
 Rather than replacing analyst expertise, the platform reduces repetitive manual work so analysts can spend more time investigating threats and making informed security decisions.
 
@@ -46,7 +46,7 @@ Every feature should reduce cognitive load by presenting information in a way th
 
 ### 3. Context Over Volume
 
-More information does not always improve decision making. The platform prioritizes relevant context over displaying every available data point.
+More information does not always improve decision making. Future enrichment modules are being designed to prioritize relevant context over displaying every available data point.
 
 ### 4. Modular Architecture
 
@@ -94,7 +94,7 @@ Dashboard
 ---
 # Component Overview
 
-## Threat Reports
+## Threat Sources
 
 ### Purpose
 
@@ -107,10 +107,6 @@ External intelligence providers.
 ### Output
 
 Raw threat intelligence in multiple formats.
-
-### Why Here?
-
-Every investigation begins with data collection. Without reliable intelligence sources, downstream analysis cannot occur.
 
 ## Collection Layer
 
@@ -128,8 +124,8 @@ Raw threat objects awaiting validation.
 
 ### Design Decisions
 
-- Python will be used because of its mature cybersecurity ecosystem and API support.
-- Each threat feed will operate independently so a failure in one source does not stop the pipeline.
+- Python was selected because it provides mature libraries for REST APIs, threat intelligence automation, and future cloud integrations while keeping collection modules lightweight and easy to extend.
+- Each collection module is isolated so failures in one intelligence source do not interrupt collection from the others. This modular approach also makes it easier to integrate new threat providers without modifying existing collectors.
 - Failed requests will be logged and retried later.
 - Collection modules should remain isolated to simplify future expansion.
 
@@ -147,9 +143,6 @@ Raw threat feed responses.
 
 Validated threat objects with consistent field names and data structures.
 
-### Why Here?
-
-Threat feeds use different naming conventions and formats. Standardization ensures every downstream component works with predictable data.
 
 ## Threat Enrichment
 
@@ -176,7 +169,7 @@ Threats enriched with contextual intelligence including:
 
 Enrichment occurs after normalization to ensure every provider can be processed using a consistent data model.
 
-Threat intelligence should prioritize context rather than simply displaying additional information.
+Threat enrichment should provide meaningful context rather than simply adding more data.
 
 ## Risk Prioritization
 
@@ -252,9 +245,6 @@ GET /statistics
 
 POST /report
 
-### Why Here?
-
-Separating the API from the dashboard allows future integrations with mobile applications, automation tools, and external security platforms.
 
 ## Dashboard
 
