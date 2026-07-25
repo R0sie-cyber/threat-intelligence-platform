@@ -1,3 +1,5 @@
+# Responsibility: Build the database. Create the tables.
+
 import sqlite3
 from pathlib import Path
 
