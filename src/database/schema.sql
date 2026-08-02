@@ -11,3 +11,19 @@ CREATE TABLE IF NOT EXISTS threats (
     notes TEXT,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS threat_enrichment (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    threat_id INTEGER NOT NULL UNIQUE,
+
+    cvss_score REAL,
+    cvss_severity TEXT,
+    cwe TEXT,
+    published_date TEXT,
+    last_modified TEXT,
+    description TEXT,
+
+    FOREIGN KEY (threat_id)
+        REFERENCES threats(id)
+);

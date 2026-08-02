@@ -1,82 +1,97 @@
-# Threat Intelligence Platform
+# SignalIQ
 
-> **SignalIQ** is the current development codename for this project. The final platform name is still being evaluated.
-
-An end-to-end threat intelligence platform that automates the collection, enrichment, prioritization, and visualization of cyber threat intelligence to reduce analyst cognitive overload.
+> SignalIQ is a threat intelligence platform designed to collect, enrich, and organize vulnerability intelligence from multiple public sources to help security analysts reduce manual investigation effort.
 
 ---
 
-## Overview
+# Overview
 
-Modern security analysts rely on multiple intelligence sources to investigate a single threat. Valuable context is often scattered across vulnerability databases, threat feeds, vendor advisories, the MITRE ATT&CK framework, and other security resources, requiring analysts to manually collect and correlate information before meaningful investigation can begin.
+Security analysts often rely on multiple intelligence sources when investigating vulnerabilities. Valuable context is distributed across platforms such as CISA, vulnerability databases, vendor advisories, and threat intelligence feeds.
 
-SignalIQ is being developed to reduce that manual effort by automatically collecting, enriching, prioritizing, and organizing cyber threat intelligence into a centralized workflow.
+Before meaningful analysis can begin, analysts often need to manually collect, compare, and organize information from multiple sources.
 
-This project demonstrates cybersecurity, software engineering, cloud, and data engineering concepts while following a modular architecture designed for future cloud deployment.
+SignalIQ is being developed to simplify this workflow by creating a centralized threat intelligence pipeline that automatically collects vulnerability data, enriches it with additional context, and prepares it for future risk prioritization and visualization.
 
+The project demonstrates cybersecurity, backend engineering, database design, API integration, and data engineering concepts through a modular architecture designed for future expansion.
 
 ---
 
-## Why I Built This
+# Why I Built This
 
 While working through threat hunting labs and vulnerability research, I realized analysts often have to switch between multiple intelligence sources to investigate a single vulnerability.
 
-I'm building this project to better understand how modern threat intelligence platforms are designed and to explore how threat collection, enrichment, and prioritization can be automated using Python, public threat feeds, cloud technologies, and data visualization.
+CISA may identify whether a vulnerability is actively exploited, while other sources provide additional context such as severity ratings, weaknesses, and technical details.
 
-Rather than replacing analysts, the goal is to reduce repetitive data gathering so more time can be spent investigating and understanding threats.
+I wanted to explore how this process could be automated.
+
+Rather than replacing analysts, SignalIQ focuses on reducing repetitive data gathering and organization so security professionals can spend more time investigating threats and making decisions.
 
 ---
 
-## Current Features
+# Current Features
 
-- Collects live threat intelligence from the CISA Known Exploited Vulnerabilities (KEV) feed
+## Threat Intelligence Collection
+
+- Collects vulnerability data from the CISA Known Exploited Vulnerabilities (KEV) catalog
 - Validates API responses before processing
-- Stores raw threat intelligence for future enrichment
-- Modular service-oriented architecture
-- Architecture and system design documentation
-- Database schema design
+- Parses JSON threat intelligence data
+
+## Database Persistence
+
+- Stores vulnerability records in SQLite
+- Uses a normalized database structure
+- Separates collected threats from enrichment data
+- Prevents duplicate records through database constraints
+
+## Threat Enrichment
+
+- Integrates with the National Vulnerability Database (NVD)
+- Retrieves vulnerability metadata using CVE identifiers
+- Extracts:
+  - CVSS score
+  - CVSS severity
+  - CWE classification
+  - Vulnerability descriptions
+  - Published dates
+  - Modified dates
+
+## Engineering Practices
+
+- Modular Python architecture
+- API-based data collection
+- Separation of collection and enrichment workflows
+- Version-controlled development
+- Engineering decision documentation
 
 ---
 
-## Planned Features
-
-- MITRE ATT&CK technique mapping
-- CVE enrichment
-- EPSS integration
-- Risk prioritization engine
-- Interactive Power BI dashboard
-- REST API
-- Azure deployment
-- Automated analyst reporting
-- Multi-source threat intelligence collection
-
----
-
-## System Architecture
+# System Architecture
 
 ```
-Threat Sources
-      │
-      ▼
+Threat Intelligence Sources
+        │
+        ▼
 Collection Layer
-      │
-      ▼
-Validation
-      │
-      ▼
-Raw Threat Storage
-      │
-      ▼
-Future Modules
-      │
-      ├── Threat Enrichment
-      ├── Risk Prioritization
-      ├── Database
-      ├── REST API
-      └── Interactive Dashboard
+(CISA KEV)
+        │
+        ▼
+Database Layer
+(SQLite)
+        │
+        ▼
+Enrichment Layer
+(NVD)
+        │
+        ▼
+Risk Prioritization
+(Planned)
+        │
+        ▼
+Dashboard & Reporting
+(Planned)
 ```
 
-Detailed architecture documentation is available in:
+Detailed architecture documentation:
 
 ```
 docs/architecture/system-architecture.md
@@ -84,42 +99,84 @@ docs/architecture/system-architecture.md
 
 ---
 
-## Tech Stack
+# Technology Stack
 
-### Languages
+## Languages
+
 - Python
+- SQL
 
-### Threat Intelligence
+## Database
+
+- SQLite
+
+## Third-Party Libraries
+
+- requests
+
+## Python Standard Library
+
+- sqlite3
+- json
+
+## Threat Intelligence Sources
+
 - CISA Known Exploited Vulnerabilities (KEV)
-- REST APIs
+- National Vulnerability Database (NVD)
 
-### Cybersecurity Concepts
-- Threat Intelligence
-- MITRE ATT&CK
-- Vulnerability Management
+## Documentation
 
-### Planned Technologies
+- Markdown
+- Git/GitHub
+
+## Planned Technologies
+
 - Microsoft Azure
 - Power BI
-- SQL Database
+- REST API
+- AI/ML capabilities
 
 ---
 
-## Repository Structure
+# Repository Structure
 
 ```
 threat-intelligence-platform/
 │
 ├── docs/
-│   └── architecture/
-│       ├── system-architecture.md
-│       └── data-sources.md
+│   ├── architecture/
+│   │   ├── data-flow.md
+│   │   ├── data-sources.md
+│   │   ├── system-architecture.md
+│   │   ├── system-overview.md
+│   │   └── tech-stack.md
+│   │
+│   ├── engineering-journal/
+│   │   ├── 2026-07-04-project-foundation.md
+│   │   ├── 2026-07-24-persistence-layer.md
+│   │   ├── 2026-07-27-cisa-ingestion.md
+│   │   ├── 2026-07-30-database-normalization.md
+│   │   └── 2026-08-01-nvd-enrichment.md
+│   │
+│   ├── roadmap/
+│   │   ├── future-features.md
+│   │   └── version-history.md
 │
 ├── src/
 │   ├── collection/
 │   │   └── cisa_collector.py
-│   └── database/
-│       └── schema.md
+│   │
+│   ├── database/
+│   │   ├── __init__.py
+│   │   ├── cisa_importer.py
+│   │   ├── connection.py
+│   │   ├── database.py
+│   │   ├── schema.md
+│   │   └── schema.sql
+│   │
+│   └── enrichment/
+│       ├── __init__.py
+│       └── nvd_enrichment.py
 │
 ├── requirements.txt
 ├── README.md
@@ -129,35 +186,35 @@ threat-intelligence-platform/
 
 ---
 
-## Installation
+# Installation
 
-Clone the repository
+Clone the repository:
 
 ```bash
 git clone https://github.com/R0sie-cyber/threat-intelligence-platform.git
 ```
 
-Navigate into the project
+Navigate into the project:
 
 ```bash
 cd threat-intelligence-platform
 ```
 
-Create a virtual environment
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
 ```
 
-Activate the environment
+Activate the environment:
 
-Windows
+Windows:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Install dependencies
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -165,65 +222,75 @@ pip install -r requirements.txt
 
 ---
 
-## Usage
+# Usage
 
-Collect the latest CISA Known Exploited Vulnerabilities (KEV) feed.
+SignalIQ currently follows this workflow
+
+```
+CISA KEV API
+      |
+      |
+      v
+Threat Database
+      |
+      |
+      v
+NVD Enrichment
+      |
+      |
+      v
+Enriched Threat Intelligence
+```
+### Collect threat intelligence
 
 ```bash
 python src/collection/cisa_collector.py
 ```
 
-Example output
+### Enrich vulnerability data
 
-```
-======================================
- SignalIQ Threat Collection
-======================================
-
-Connecting to CISA KEV feed...
-
-Collection Summary
-
-Threat Feed:
-CISA Known Exploited Vulnerabilities
-
-Vulnerabilities:
-1631
-
-Collection completed successfully.
+```bash
+python src/enrichment/nvd_enrichment.py
 ```
 
 ---
 
-## Development Roadmap
+# Development Roadmap
+
+## Completed
 
 - [x] Repository setup
 - [x] Project architecture
-- [x] Documentation
-- [x] Database schema
-- [x] Initial CISA KEV collector
-- [ ] Data normalization
-- [ ] Threat enrichment
+- [x] Documentation structure
+- [x] SQLite database implementation
+- [x] CISA KEV collection pipeline
+- [x] Database normalization
+- [x] NVD enrichment pipeline
+
+## In Progress
+
 - [ ] MITRE ATT&CK mapping
-- [ ] Risk prioritization
-- [ ] Database implementation
+- [ ] EPSS integration
+- [ ] Risk prioritization engine
+
+## Future
+
+- [ ] Interactive Power BI dashboard
 - [ ] REST API
-- [ ] Interactive dashboard
 - [ ] Azure deployment
+- [ ] AI-assisted threat analysis
+- [ ] Automated reporting
 
 ---
 
-## Future Improvements
+# Future Vision
 
-- Support multiple threat intelligence providers
-- Implement automated enrichment workflows
-- Integrate EPSS and CVSS scoring
-- Build analyst investigation dashboard
-- Generate executive threat reports
-- Deploy platform to Microsoft Azure
+The long-term goal of SignalIQ is to transform fragmented threat intelligence into contextual and actionable insights.
+
+By combining multiple intelligence sources, enrichment pipelines, automated prioritization, and visualization, SignalIQ aims to help analysts spend less time searching for information and more time making informed security decisions.
 
 ---
 
-## License
+# License
 
 This project is licensed under the MIT License.
