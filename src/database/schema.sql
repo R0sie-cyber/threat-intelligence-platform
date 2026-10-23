@@ -1,3 +1,4 @@
+
 CREATE TABLE IF NOT EXISTS threats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cve_id TEXT NOT NULL UNIQUE,
@@ -14,7 +15,6 @@ CREATE TABLE IF NOT EXISTS threats (
 
 CREATE TABLE IF NOT EXISTS threat_enrichment (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-
     threat_id INTEGER NOT NULL UNIQUE,
 
     cvss_score REAL,
@@ -24,6 +24,11 @@ CREATE TABLE IF NOT EXISTS threat_enrichment (
     last_modified TEXT,
     description TEXT,
 
+    last_enriched_at TEXT,
+
     FOREIGN KEY (threat_id)
         REFERENCES threats(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_threat_enrichment_last_enriched
+    ON threat_enrichment(last_enriched_at);

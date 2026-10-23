@@ -1,50 +1,124 @@
-import json
-import requests
+
+"""
+SignalIQ NVD enrichment pipeline.
+
+Supports:
+- Incremental enrichment of new CVEs
+- Controlled refreshes of existing CVEs
+- Manual refresh of a specific CVE
+- Selective retries for temporary API failures
+- SQLite upserts and enrichment timestamps
+"""
+
+import argparse
+import random
+import sqlite3
 import time
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
+
+import requests
+
 from src.database.connection import get_database_connection
 
-# Define project paths
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 NVD_API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-def load_threats():
+DEFAULT_REFRESH_DAYS = 7
+DEFAULT_BATCH_SIZE = 10
+REQUEST_DELAY_SECONDS = 6
+MAX_RETRIES = 3
+
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def utc_now():
+    """Return the current UTC timestamp."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def load_threats(mode="new", limit=DEFAULT_BATCH_SIZE,
+                 refresh_days=DEFAULT_REFRESH_DAYS, cve_id=None):
     """
-    Retrieve all stored threats from the database.
+    Select CVEs for enrichment.
+
+    Modes:
+        new: CVEs without enrichment records.
+        stale: Timestamped enrichment older than refresh_days.
+        legacy: Existing enrichment without a timestamp.
+        force: Refresh a specified CVE regardless of status.
     """
-    # Connect to (or create) the SQLite database
     connection = get_database_connection()
-        
-    # Create a cursor
-    cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        SELECT id, cve_id
-        FROM threats
-        ORDER BY id ASC
-        """
-)
+    try:
+        if mode == "force":
+            if not cve_id:
+                raise ValueError("A CVE ID is required for force mode.")
 
-    # Fetch all rows
-    threats = cursor.fetchall()
+            rows = connection.execute(
+                """
+                SELECT id, cve_id
+                FROM threats
+                WHERE cve_id = ?
+                """,
+                (cve_id.upper(),)
+            ).fetchall()
 
-    # Close resources
-    cursor.close()
-    connection.close()
+            return rows
 
-    return threats
+        if mode == "new":
+            query = """
+                SELECT t.id, t.cve_id
+                FROM threats t
+                LEFT JOIN threat_enrichment e
+                    ON t.id = e.threat_id
+                WHERE e.id IS NULL
+                ORDER BY t.id ASC
+                LIMIT ?
+            """
+            parameters = (limit,)
+
+        elif mode == "legacy":
+            query = """
+                SELECT t.id, t.cve_id
+                FROM threats t
+                JOIN threat_enrichment e
+                    ON t.id = e.threat_id
+                WHERE e.last_enriched_at IS NULL
+                ORDER BY t.id ASC
+                LIMIT ?
+            """
+            parameters = (limit,)
+
+        elif mode == "stale":
+            cutoff = (
+                datetime.now(timezone.utc)
+                - timedelta(days=refresh_days)
+            ).isoformat()
+
+            query = """
+                SELECT t.id, t.cve_id
+                FROM threats t
+                JOIN threat_enrichment e
+                    ON t.id = e.threat_id
+                WHERE e.last_enriched_at IS NOT NULL
+                  AND e.last_enriched_at <= ?
+                ORDER BY e.last_enriched_at ASC
+                LIMIT ?
+            """
+            parameters = (cutoff, limit)
+
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
+
+        return connection.execute(query, parameters).fetchall()
+
+    finally:
+        connection.close()
 
 
-def fetch_nvd_data(cve_id, max_retries=5):
-    """
-    Retrieve enrichment data for a single CVE from the NVD API.
-    """
-
-    print(f"Fetching NVD data for {cve_id}...")
-
+def fetch_nvd_data(cve_id, max_retries=MAX_RETRIES):
+    """Retrieve NVD data with selective retry handling."""
     for attempt in range(max_retries):
-
         try:
             response = requests.get(
                 NVD_API_URL,
@@ -52,80 +126,99 @@ def fetch_nvd_data(cve_id, max_retries=5):
                 timeout=30
             )
 
-            response.raise_for_status()
+            if response.status_code in RETRYABLE_STATUS_CODES:
+                if attempt == max_retries - 1:
+                    response.raise_for_status()
 
+                retry_after = response.headers.get("Retry-After")
+
+                if retry_after and retry_after.isdigit():
+                    wait_time = min(int(retry_after), 120)
+                else:
+                    wait_time = min(
+                        2 ** attempt + random.uniform(0, 1),
+                        60
+                    )
+
+                print(
+                    f"Temporary HTTP {response.status_code} "
+                    f"for {cve_id}. Retrying in "
+                    f"{wait_time:.1f} seconds..."
+                )
+                time.sleep(wait_time)
+                continue
+
+            response.raise_for_status()
             return response.json()
 
-        except requests.exceptions.RequestException as error:
-
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError) as error:
             if attempt == max_retries - 1:
                 raise
 
-            wait_time = 2 ** attempt
-
-            print(
-                f"Request failed: {error}. "
-                f"Retrying in {wait_time} seconds..."
+            wait_time = min(
+                2 ** attempt + random.uniform(0, 1),
+                60
             )
 
+            print(
+                f"Network error for {cve_id}: {error}. "
+                f"Retrying in {wait_time:.1f} seconds..."
+            )
             time.sleep(wait_time)
+
+    raise RuntimeError(f"Failed to retrieve NVD data for {cve_id}")
 
 
 def extract_enrichment_fields(cve):
-    """
-    Extract the enrichment fields needed from the NVD response.
-    Handles different CVSS versions.
-    """
-
+    """Extract the NVD fields used by SignalIQ."""
     published_date = cve.get("published")
     last_modified = cve.get("lastModified")
 
-    description = None
-    for item in cve.get("descriptions", []):
-        if item.get("lang") == "en":
-            description = item.get("value")
-            break
+    description = next(
+        (
+            item.get("value")
+            for item in cve.get("descriptions", [])
+            if item.get("lang") == "en"
+        ),
+        None
+    )
 
     metrics = cve.get("metrics", {})
 
     cvss_score = None
     cvss_severity = None
 
-    # Try CVSS v3.1 first
-    if "cvssMetricV31" in metrics:
-        cvss_data = metrics["cvssMetricV31"][0]["cvssData"]
+    for version in (
+        "cvssMetricV31",
+        "cvssMetricV30",
+        "cvssMetricV2"
+    ):
+        entries = metrics.get(version, [])
+
+        if not entries:
+            continue
+
+        metric = entries[0]
+        cvss_data = metric.get("cvssData", {})
 
         cvss_score = cvss_data.get("baseScore")
-        cvss_severity = cvss_data.get("baseSeverity")
+        cvss_severity = (
+            cvss_data.get("baseSeverity")
+            or metric.get("baseSeverity")
+        )
+        break
 
-    # Fall back to CVSS v3.0
-    elif "cvssMetricV30" in metrics:
-        cvss_data = metrics["cvssMetricV30"][0]["cvssData"]
-
-        cvss_score = cvss_data.get("baseScore")
-        cvss_severity = cvss_data.get("baseSeverity")
-
-    # Fall back to CVSS v2
-    elif "cvssMetricV2" in metrics:
-        cvss_data = metrics["cvssMetricV2"][0]["cvssData"]
-
-        cvss_score = cvss_data.get("baseScore")
-
-        # CVSS v2 does not always include baseSeverity
-        cvss_severity = metrics["cvssMetricV2"][0].get("baseSeverity")
-
-
-    # Extract CWE information safely
     cwe = None
 
-    weaknesses = cve.get("weaknesses", [])
+    for weakness in cve.get("weaknesses", []):
+        for item in weakness.get("description", []):
+            if item.get("lang") == "en":
+                cwe = item.get("value")
+                break
 
-    if weaknesses:
-        descriptions = weaknesses[0].get("description", [])
-
-        if descriptions:
-            cwe = descriptions[0].get("value")
-
+        if cwe:
+            break
 
     return {
         "published_date": published_date,
@@ -136,106 +229,193 @@ def extract_enrichment_fields(cve):
         "cwe": cwe
     }
 
-def insert_enrichment(threat_id, enrichment):
-    """
-    Insert enrichment data into the threat_enrichment table.
-    """
 
+def upsert_enrichment(threat_id, enrichment):
+    """Insert or update enrichment for a threat."""
     connection = get_database_connection()
-    cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO threat_enrichment (
-            threat_id,
-            cvss_score,
-            cvss_severity,
-            cwe,
-            published_date,
-            last_modified,
-            description
+    try:
+        connection.execute(
+            """
+            INSERT INTO threat_enrichment (
+                threat_id,
+                cvss_score,
+                cvss_severity,
+                cwe,
+                published_date,
+                last_modified,
+                description,
+                last_enriched_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+
+            ON CONFLICT(threat_id) DO UPDATE SET
+                cvss_score = COALESCE(
+                    excluded.cvss_score,
+                    threat_enrichment.cvss_score
+                ),
+                cvss_severity = COALESCE(
+                    excluded.cvss_severity,
+                    threat_enrichment.cvss_severity
+                ),
+                cwe = COALESCE(
+                    excluded.cwe,
+                    threat_enrichment.cwe
+                ),
+                published_date = COALESCE(
+                    excluded.published_date,
+                    threat_enrichment.published_date
+                ),
+                last_modified = COALESCE(
+                    excluded.last_modified,
+                    threat_enrichment.last_modified
+                ),
+                description = COALESCE(
+                    excluded.description,
+                    threat_enrichment.description
+                ),
+                last_enriched_at = excluded.last_enriched_at
+            """,
+            (
+                threat_id,
+                enrichment["cvss_score"],
+                enrichment["cvss_severity"],
+                enrichment["cwe"],
+                enrichment["published_date"],
+                enrichment["last_modified"],
+                enrichment["description"],
+                utc_now()
+            )
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            threat_id,
-            enrichment["cvss_score"],
-            enrichment["cvss_severity"],
-            enrichment["cwe"],
-            enrichment["published_date"],
-            enrichment["last_modified"],
-            enrichment["description"]
-        )
+
+        connection.commit()
+
+    except sqlite3.Error:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
+
+
+def run_enrichment(mode="new", limit=DEFAULT_BATCH_SIZE,
+                   refresh_days=DEFAULT_REFRESH_DAYS, cve_id=None):
+    """Execute a controlled batch of NVD enrichment."""
+    threats = load_threats(
+        mode=mode,
+        limit=limit,
+        refresh_days=refresh_days,
+        cve_id=cve_id
     )
 
-    connection.commit()
-
-    cursor.close()
-    connection.close()
-
-
-def main():
-    """
-    Enrich all stored threats using the NVD API.
-    """
-
-    # Load all threats from the database
-    threats = load_threats()
-
-    print(f"Loaded {len(threats)} threats.\n")
+    print(f"\nMode: {mode}")
+    print(f"Selected vulnerabilities: {len(threats)}")
 
     successful = 0
     failed = 0
 
-    # Process every stored threat
-    for index, (threat_id, cve_id) in enumerate(threats, start=1):
-
-        print("=" * 60)
-        print(f"Processing {index}/{len(threats)}")
-        print(f"Threat ID: {threat_id}")
-        print(f"CVE: {cve_id}")
+    for index, (threat_id, current_cve) in enumerate(
+        threats, start=1
+    ):
+        print(
+            f"\n[{index}/{len(threats)}] "
+            f"Processing {current_cve}"
+        )
 
         try:
-            # Fetch NVD data
-            nvd_data = fetch_nvd_data(cve_id)
+            data = fetch_nvd_data(current_cve)
 
-            # Shortcut to the CVE object
-            cve = nvd_data["vulnerabilities"][0]["cve"]
+            vulnerabilities = data.get("vulnerabilities", [])
 
-            # Extract enrichment fields
+            if not vulnerabilities:
+                raise ValueError(
+                    f"No NVD vulnerability data for {current_cve}"
+                )
+
+            cve = vulnerabilities[0]["cve"]
+
+            if cve.get("id", "").upper() != current_cve.upper():
+                raise ValueError(
+                    "NVD response CVE does not match requested CVE."
+                )
+
             enrichment = extract_enrichment_fields(cve)
 
-            # Save enrichment
-            insert_enrichment(threat_id, enrichment)
+            upsert_enrichment(threat_id, enrichment)
 
             successful += 1
+            print(f"Saved enrichment for {current_cve}")
 
-            print(f"✓ Enrichment saved successfully for {cve_id}.")
-
-            # Display extracted data
-            print(f"Published Date: {enrichment['published_date']}")
-            print(f"Last Modified: {enrichment['last_modified']}")
-            print(f"Description: {enrichment['description']}")
-            print(f"CVSS Score: {enrichment['cvss_score']}")
-            print(f"CVSS Severity: {enrichment['cvss_severity']}")
-            print(f"CWE: {enrichment['cwe']}")
-
-        except Exception as error:
-
+        except (
+            requests.exceptions.RequestException,
+            ValueError,
+            KeyError,
+            sqlite3.Error
+        ) as error:
             failed += 1
+            print(f"Failed: {current_cve}: {error}")
 
-            print(f"✗ Failed to enrich {cve_id}")
-            print(f"Reason: {error}")
+        if index < len(threats):
+            time.sleep(REQUEST_DELAY_SECONDS)
 
-        # Pause between requests to reduce API rate limiting
-        time.sleep(1)
-
-    print("\n" + "=" * 60)
-    print("Enrichment Complete")
-    print("=" * 60)
-    print(f"Total Threats: {len(threats)}")
+    print("\nEnrichment Summary")
     print(f"Successful: {successful}")
     print(f"Failed: {failed}")
+
+    return failed == 0
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="SignalIQ NVD enrichment pipeline"
+    )
+
+    parser.add_argument(
+        "--mode",
+        choices=["new", "stale", "legacy", "force"],
+        default="new"
+    )
+
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=DEFAULT_BATCH_SIZE
+    )
+
+    parser.add_argument(
+        "--refresh-days",
+        type=int,
+        default=DEFAULT_REFRESH_DAYS
+    )
+
+    parser.add_argument(
+        "--cve",
+        type=str
+    )
+
+    args = parser.parse_args()
+
+    if args.limit < 1:
+        parser.error("--limit must be at least 1.")
+
+    if args.refresh_days < 0:
+        parser.error("--refresh-days cannot be negative.")
+
+    if args.mode == "force" and not args.cve:
+        parser.error("--cve is required for force mode.")
+
+    if args.cve and args.mode != "force":
+        parser.error("--cve can only be used with force mode.")
+
+    success = run_enrichment(
+        mode=args.mode,
+        limit=args.limit,
+        refresh_days=args.refresh_days,
+        cve_id=args.cve
+    )
+
+    if not success:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

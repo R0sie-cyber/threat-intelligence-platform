@@ -26,3 +26,8 @@ build/
 
 # Downloaded threat intelligence
 sample_data/*.json
+
+# Additional database formats and backup files
+*.sqlite
+*.db-*
+*.bak
